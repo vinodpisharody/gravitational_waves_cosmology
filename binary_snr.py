@@ -45,24 +45,33 @@ for i in range(len(data)):
     freq_lisa = np.append(freq_lisa, float(data[i][0]))
     sensitivity_lisa = np.append(sensitivity_lisa, float(data[i][1]))
 sensitivity_lisa = np.sqrt(sensitivity_lisa)
-# 4 CE
-with open('cosmic_explorer_noise.csv', newline='') as csvfile:
+# 4 CE_A (20 km Baseline)
+with open('cosmic_explorer_A_noise.csv', newline='') as csvfile:
     data = list(csv.reader(csvfile))
-freq_ce = np.empty(0)
-sensitivity_ce = np.empty(0)
+freq_ce_A = np.empty(0)
+sensitivity_ce_A = np.empty(0)
 for i in range(len(data)):
-    freq_ce = np.append(freq_ce, float(data[i][0]))
-    sensitivity_ce = np.append(sensitivity_ce, float(data[i][1]))
-# 4 ET
+    freq_ce_A = np.append(freq_ce_A, float(data[i][0]))
+    sensitivity_ce_A = np.append(sensitivity_ce_A, float(data[i][1]))
+# 4 CE_B (40 km baseline)
+with open('cosmic_explorer_B_noise.csv', newline='') as csvfile:
+    data = list(csv.reader(csvfile))
+freq_ce_B = np.empty(0)
+sensitivity_ce_B = np.empty(0)
+for i in range(len(data)):
+    freq_ce_B = np.append(freq_ce_B, float(data[i][0]))
+    sensitivity_ce_B = np.append(sensitivity_ce_B, float(data[i][1]))
+# 6 ET
 with open('ET_noise.csv', newline='') as csvfile:
     data = list(csv.reader(csvfile))
 freq_et = np.empty(0)
 sensitivity_et = np.empty(0)
-freq_test=np.arange(10**-4,0.1,10**-5)
-sensitivity_test=(10**-20)*np.ones(len(freq_test))
 for i in range(len(data)):
     freq_et = np.append(freq_et, float(data[i][0]))
     sensitivity_et = np.append(sensitivity_et, float(data[i][3]))
+# 7 Test 
+freq_test=np.arange(10**-4,0.1,10**-5)
+sensitivity_test=(10**-20)*np.ones(len(freq_test))
 def phenomA(f,m1,m2,z):
     fm = [2.9740*10**(-1), 4.4810*10**(-2), 9.5560*10**(-2)]
     fri = [5.9411*10**(-1), 8.9794*10**(-2), 19.111*10**(-2)]
@@ -97,8 +106,10 @@ class detector():
             return(freq_a_plus,sensitivity_a_plus)
         elif self.detector=="ET" or self.detector=="EINSTEIN TELESCOPE":
             return(freq_et,sensitivity_et)
-        elif self.detector=="CE" or self.detector=="COSMIC EXPLORER":
-            return(freq_ce,sensitivity_ce)
+        elif self.detector=="CE1" or self.detector=="COSMIC EXPLORER1":
+            return(freq_ce_A,sensitivity_ce_A)
+        elif self.detector=="CE2" or self.detector=="COSMIC EXPLORER2":
+            return(freq_ce_B,sensitivity_ce_B)
         elif self.detector=="DECIGO":
             return(freq_decigo,sensitivity_decigo)
         elif self.detector=="LISA":
@@ -147,7 +158,7 @@ class bbh():
             freq=freq[init:end]
             Sh=Sh[init:end]
             C=C[init:end]
-        if self.detector=='ET':
+        if self.detector=='ET' or self.detector=='DECIGO':
             R=9/20
         dx_values = np.diff(freq)
         return(np.sqrt(((16*R)/5)*np.trapz((C**2)/Sh,freq,dx_values)))
@@ -180,26 +191,12 @@ class bbh():
             freq=freq[init:end]
             Sh=Sh[init:end]
             C=C[init:end]
-        if self.detector=='ET':
+        if self.detector=='ET' or self.detector=='DECIGO':
             R=9/20
         plt.loglog(detector(self.detector).get_asd()[0],np.sqrt(detector(self.detector).get_asd()[0]*(detector(self.detector).get_asd()[1]**2)/R),color='k',label=r'$h_n(f)$')
         plt.loglog(freq,np.sqrt(16/5)*C*freq,color=curve_color,label=r'$h_c(f,T={})$'.format(Tobs))
         plt.fill_between(freq,np.sqrt(16/5)*C*freq,np.sqrt(freq*(Sh)/R),where=(np.sqrt(16/5)*C*freq>np.sqrt(freq*
         (Sh)/R)),color=curve_color,alpha=0.4)
         plt.legend()   
-def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
-    c=[np.exp(-i) for i in np.arange(1,50,1)]
-    res=0
-    count=0
-    for i in range(len(c)):
-        temp=res
-        ans=minimize_scalar(lambda x:abs(bbh(m1=m1,m2=m2,z=x,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)+c[i]*(x-res)**2)
-        res=ans.x
-        if temp==res:
-            count=count+1
-        if count>10:
-            if res<0.1:
-                break
-            else:
-                return(0)
-    return res
+
+
