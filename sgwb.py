@@ -100,7 +100,7 @@ class background():
                     return result
                 return memoized_func        
             return decorator
-        @memoize(maxsize=10000)
+        @memoize(maxsize=1000)
         def normalizer(f,m_min,m_max):
             return(quad(lambda m:f(m), m_min, m_max, epsrel=1, epsabs=1)[0])
         f=self.frequency_band
@@ -118,7 +118,8 @@ class background():
                 *probability_function(m1, m2,z)*(1/((((self.om_m*((1+z)**3))+self.om_l)**(0.5))*(1+z)))*(rem_rate(z)
                                 /(normalizer(lambda m:probability_function_secondary(m,z),m2_min,m2_max)*normalizer(lambda m:probability_function_primary(m,z),m2,m1_max)))
                 def m1_integral(m2, z):
-                    return quad(lambda m1: integrand(z, m1, m2),m2, m1_max, epsrel=10, epsabs=10)[0]
+                    a=quad(lambda m1: integrand(z, m1, m2),m2, m1_max, epsrel=10, epsabs=10)[0]
+                    return a
                 def m2_integral(z):
                     return quad(lambda m2: m1_integral(m2, z), m2_min, m2_max, epsrel=10, epsabs=10)[0]
                 result, _ = quad(lambda z: m2_integral(z), z_lower, z_upper, epsrel=1, epsabs=1)
@@ -138,6 +139,8 @@ class background():
         condition_middle = (f>lower_band_cutoff) & (f<upper_band_cutoff)
         mask_middle= np.where(condition_middle)
         middle_f_ = f[mask_middle]
+        if len(middle_f_)==0:
+            return np.concatenate((g_lower,g_upper))
         middle_f=np.geomspace(lower_band_cutoff,upper_band_cutoff,100)
         g_sw=np.array(ray.get([omega.remote(i) for i in middle_f]))
         g_sw=interpolate.interp1d(middle_f,g_sw,kind='linear',fill_value='extrapolate')(middle_f_)
