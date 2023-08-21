@@ -47,6 +47,19 @@ def waveform_factor(f,z,m1,m2,flag=None,detector=None):
 
 @ray.remote
 class background():
+    """
+    A class to compute Stochastic gravitational wave background for a given population model using Phinney(2003)
+    Attributes:
+        merger(tuple): A size 3 tuple containing one variable merger rate as lambda function z_min and z_max as floats 
+        primary_mass (tuple) :A size 3 tuple containing one variable probability function for larger mass as lambda function and m_min and m_max as floats
+        secondary_mass (tuple) :A size 3 tuple containing one variable probability function for smaller mass as lambda function and m_min and m_max as floats
+        H0 (float) : Present day value of Hubble's Constant in km/(Mpc*year)
+        om_m (float) : Matter density
+        om_m (float) : Vacuum density
+        frequency_band(numpy array) : An array of frequency values to compute the background 
+        detector(string):LISA or DECIGO to only consider the inpiral case .Default None to include the merger and ringdown phase
+        verbose(bool):To show/hide warnings
+    """
     def __init__(self,merger,primary_mass,secondary_mass,H0=70,om_m=0.3,om_l=0.7,frequency_band=None,detector=None,verbose=True):
         self.H0=H0
         self.om_m=om_m
