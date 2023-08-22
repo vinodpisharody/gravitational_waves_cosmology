@@ -173,7 +173,6 @@ class bbh():
         curve_color = "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         R=1/5
         if self.detector=='test':
-            
             R=1
         if self.detector=='LISA':
             R=1
@@ -200,7 +199,6 @@ class bbh():
             R=9/20
         if self.detector=='DECIGO':
             R=9/20
-
         plt.loglog(detector(self.detector).get_asd()[0],np.sqrt(detector(self.detector).get_asd()[0]*(detector(self.detector).get_asd()[1]**2)/R),color='k',label=r'$h_n(f,{},{})$'.format(self.detector,self.m1/(1+self.z)))
         plt.loglog(freq,np.sqrt(16/5)*C*freq,color=curve_color,label=r'$h_c(f,T={})$'.format(Tobs))
         plt.fill_between(freq,np.sqrt(16/5)*C*freq,np.sqrt(freq*(Sh)/R),where=(np.sqrt(16/5)*C*freq>np.sqrt(freq*
