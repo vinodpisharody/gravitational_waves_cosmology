@@ -72,7 +72,7 @@ for i in range(len(data)):
 # 7 Test 
 freq_test=np.arange(10**-4,0.1,10**-5)
 sensitivity_test=(10**-20)*np.ones(len(freq_test))
-def phenomA(f,m1,m2,z):
+def phenomA(f,m1,m2,z,flag=None):
     fm = [2.9740*10**(-1), 4.4810*10**(-2), 9.5560*10**(-2)]
     fri = [5.9411*10**(-1), 8.9794*10**(-2), 19.111*10**(-2)]
     fc = [8.4845*10**(-1), 12.848*10**(-2), 27.299*10**(-2)]
@@ -87,6 +87,8 @@ def phenomA(f,m1,m2,z):
     f_w = ((c**3)*(fw[0]*eta*eta+fw[1]*eta+fw[2]))/(np.pi*G*M_total*M)
     w=(np.pi*f_w/2)*(f_merg/f_ring)**(2/3)
     ans = []
+    if flag=='cutoff':
+        return(f_cut)
     factor=((np.sqrt(5/24))*(M_x**(5/6))*(f_merg**(-7/6)))/((np.pi**(2/3))*(1/c))
     for _ in f:
         if _ < f_merg:
@@ -134,39 +136,6 @@ class bbh():
         C=self.get_strain()
         Sh=(detector(self.detector).get_asd()[1])**2
         freq=detector(self.detector).get_asd()[0]
-        R=1
-        if self.detector=='test':
-            R=1
-        if self.detector=='LISA':
-            R=1
-            M_total = self.m1+self.m2
-            eta = self.m1*self.m2/(M_total**2)
-            M_chirp=(eta**(3/5))*M_total
-            M_x=(G*M_chirp*M)/c**3
-            f_isco=(c**3)/(G*(6**(3/2))*M_total*M*np.pi)
-            tau=(eta*Tobs*year*(c**3))/(G*5*M_total*M)
-            f_initial=((c**3)/(8*np.pi*G*M_total*M*(tau**(3/8))))*(1+((11*eta/32)+743/2688)*tau**(-1/4))
-            f_initial=min(max(f_initial,10**-4),0.1)
-            if f_isco>0.1:
-                f_end=0.1
-            else:
-                f_end=f_isco
-            if f_initial==0.1:
-                return 0
-            init=np.argwhere(freq>=f_initial)[0][0]
-            end=np.argwhere(freq>=f_end)[0][0]
-            freq=freq[init:end]
-            Sh=Sh[init:end]
-            C=C[init:end]
-        if self.detector=='ET' or self.detector=='DECIGO':
-            R=9/20
-        dx_values = np.diff(freq)
-        return(np.sqrt(((16*R)/5)*np.trapz((C**2)/Sh,freq,dx_values)))
-    def get_view(self,Tobs=1):
-        C=self.get_strain()
-        Sh=(detector(self.detector).get_asd()[1])**2
-        freq=detector(self.detector).get_asd()[0]
-        curve_color = "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         R=1/5
         if self.detector=='test':
             R=1
@@ -191,12 +160,50 @@ class bbh():
             freq=freq[init:end]
             Sh=Sh[init:end]
             C=C[init:end]
-        if self.detector=='ET' or self.detector=='DECIGO':
+        if self.detector=='ET' :
             R=9/20
-        plt.loglog(detector(self.detector).get_asd()[0],np.sqrt(detector(self.detector).get_asd()[0]*(detector(self.detector).get_asd()[1]**2)/R),color='k',label=r'$h_n(f)$')
+        if self.detector=='DECIGO':
+            R=9/20
+        dx_values = np.diff(freq)
+        return(np.sqrt(((16*R)/5)*np.trapz((C**2)/Sh,freq,dx_values)))
+    def get_view(self,Tobs=1):
+        C=self.get_strain()
+        Sh=(detector(self.detector).get_asd()[1])**2
+        freq=detector(self.detector).get_asd()[0]
+        curve_color = "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        R=1/5
+        if self.detector=='test':
+            
+            R=1
+        if self.detector=='LISA':
+            R=1
+            M_total = self.m1+self.m2
+            eta = self.m1*self.m2/(M_total**2)
+            M_chirp=(eta**(3/5))*M_total
+            M_x=(G*M_chirp*M)/c**3
+            f_isco=(c**3)/(G*(6**(3/2))*M_total*M*np.pi)
+            tau=(eta*Tobs*year*(c**3))/(G*5*M_total*M)
+            f_initial=((c**3)/(8*np.pi*G*M_total*M*(tau**(3/8))))*(1+((11*eta/32)+743/2688)*tau**(-1/4))
+            f_initial=min(max(f_initial,10**-4),0.1)
+            if f_isco>0.1:
+                f_end=0.1
+            else:
+                f_end=f_isco
+            if f_initial==0.1:
+                return 0
+            init=np.argwhere(freq>=f_initial)[0][0]
+            end=np.argwhere(freq>=f_end)[0][0]
+            freq=freq[init:end]
+            Sh=Sh[init:end]
+            C=C[init:end]
+        if self.detector=='ET':
+            R=9/20
+        if self.detector=='DECIGO':
+            R=9/20
+
+        plt.loglog(detector(self.detector).get_asd()[0],np.sqrt(detector(self.detector).get_asd()[0]*(detector(self.detector).get_asd()[1]**2)/R),color='k',label=r'$h_n(f,{},{})$'.format(self.detector,self.m1/(1+self.z)))
         plt.loglog(freq,np.sqrt(16/5)*C*freq,color=curve_color,label=r'$h_c(f,T={})$'.format(Tobs))
         plt.fill_between(freq,np.sqrt(16/5)*C*freq,np.sqrt(freq*(Sh)/R),where=(np.sqrt(16/5)*C*freq>np.sqrt(freq*
         (Sh)/R)),color=curve_color,alpha=0.4)
         plt.legend()   
-
 
