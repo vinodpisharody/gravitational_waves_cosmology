@@ -67,15 +67,15 @@ class background():
         if isinstance(merger, tuple):
             self.merger=merger
         else:
-            raise TypeError('Need to give a tuple with merger rate fucntion and z_min and z_max')
+            raise TypeError('Need to give a tuple with merger rate function and z_min and z_max')
         if isinstance(primary_mass, tuple):
             self.primary_mass=primary_mass
         else:
-            raise TypeError('Need to give a tuple with primary mass distribution fucntion and m1_min and m1_max')
+            raise TypeError('Need to give a tuple with primary mass distribution function and m1_min and m1_max')
         if isinstance(secondary_mass, tuple):
             self.secondary_mass=secondary_mass
         else:
-            raise TypeError('Need to give a tuple with primary mass distribution fucntion and m1_min and m1_max')
+            raise TypeError('Need to give a tuple with primary mass distribution function and m2_min and m2_max')
         if isinstance(frequency_band,list) or isinstance(frequency_band,np.ndarray):
             self.frequency_band=frequency_band
         else:
@@ -109,6 +109,7 @@ class background():
         probability_function_primary  =  lambda m,z : self.primary_mass[0](m,z);m1_min=self.primary_mass[1];m1_max=self.primary_mass[2]
         probability_function_secondary=  lambda m,z : self.secondary_mass[0](m,z);m2_min=self.secondary_mass[1];m2_max=self.secondary_mass[2]
         z_lower,z_upper=self.merger[1],self.merger[2];rem_rate=lambda z:self.merger[0](z)
+        print(z_lower)
         global omega
         g_sw=np.empty(0)
         probability_function=lambda m1,m2,z:probability_function_primary(m1,z)*probability_function_secondary(m2,z)
@@ -141,7 +142,9 @@ class background():
         middle_f_ = f[mask_middle]
         if len(middle_f_)==0:
             return np.concatenate((g_lower,g_upper))
-        middle_f=np.geomspace(lower_band_cutoff,upper_band_cutoff,100)
-        g_sw=np.array(ray.get([omega.remote(i) for i in middle_f]))
-        g_sw=interpolate.interp1d(middle_f,g_sw,kind='linear',fill_value='extrapolate')(middle_f_)
+        middle_f=np.logspace(lower_band_cutoff,upper_band_cutoff,100)
+        print(len(middle_f))
+        g_sw=np.array(ray.get([omega.remote(i) for i in middle_f_]))
+        #g_sw=interpolate.interp1d(middle_f,g_sw,kind='linear',fill_value='extrapolate')(middle_f_)
+        print("done")
         return np.concatenate((g_lower,g_sw,g_upper))
