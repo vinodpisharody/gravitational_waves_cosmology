@@ -203,5 +203,17 @@ class bbh():
         plt.loglog(freq,np.sqrt(16/5)*C*freq,color=curve_color,label=r'$h_c(f,T={})$'.format(Tobs))
         plt.fill_between(freq,np.sqrt(16/5)*C*freq,np.sqrt(freq*(Sh)/R),where=(np.sqrt(16/5)*C*freq>np.sqrt(freq*
         (Sh)/R)),color=curve_color,alpha=0.4)
-        plt.legend()   
+        plt.legend()
+    def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
+    c=[np.exp(-i) for i in np.arange(0,50,1)]
+    res=0
+    count=0
+    for i in range(len(c)):
+        temp=res
+        ans=minimize_scalar(lambda x:abs(bbh(m1=m1,m2=m2,z=x,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)+c[i]*(x-res)**2)
+        res=ans.x
+        if abs(bbh(m1=m1,m2=m2,z=res,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)<0.1:
+            return res
+    else:
+        raise ValueError("Invalid")
 
