@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 import scipy.stats as distribution
 mpc=3.08568*10**22
 year=365*24*3600
+gyr=year*10**9
 c=299792458
 def pgap(m,alpha,beta,m_upper,m_lower,eta):
     A=1
@@ -50,6 +51,8 @@ class events():
         self.z_peak=z_peak
         self.b=b
         self.z=z
+        if self.z==None:
+            raise ValueError('z cannot be None.Has to be tuple of the form (z_min,z_max)')
         self.H0=H0
         self.om_m=om_m
         self.om_l=om_l
@@ -64,18 +67,18 @@ class events():
         cosmo=cs.cosmology(H0=self.H0)
         sfr=lambda z:((1+z)**self.a)/(1+((1+z)/self.z_peak)**self.b)
         R=[]
-        H=self.H0/(mpc*year)
+        H=self.H0*1000/(mpc)
         zz=np.arange(self.z[0],self.z[1]+0.1,0.1)
-        delay_time_normalize_factor=quad(lambda x:delay_time_distribution(x),t_min,t_max)[0]            ## For normalizing the delay time distribution
+        delay_time_normalize_factor=quad(lambda x:delay_time_distribution(x),t_min*gyr,t_max*gyr)[0]            ## For normalizing the delay time distribution
         for i in range(np.size(zz)):
             z_initial=cosmo.get_redshift(cosmo.get_look_time(zz[i],in_gyr=True)+t_min,quant=0)
             z_final=cosmo.get_redshift(cosmo.get_look_time(zz[i],in_gyr=True)+t_max,quant=0)
-            if z_final>40:
-                z_final=40
-            if z_initial>40:
+            if z_final>self.z[1]:
+                z_final=self.z[1]
+            if z_initial>self.z[1]:
                R.append(0)
             else:
-                integrand= lambda z:(((1+z)*(H)*((self.om_m*((1+z)**3))+self.om_l)**(0.5))**(-1))*(sfr(z)/delay_time_normalize_factor)*(delay_time_distribution((cosmo.get_look_time(z,in_gyr=True)-cosmo.get_look_time(zz[i],in_gyr=True))))
+                integrand= lambda z:(((1+z)*(H)*((self.om_m*((1+z)**3))+self.om_l)**(0.5))**(-1))*(sfr(z)/delay_time_normalize_factor)*(delay_time_distribution((cosmo.get_look_time(z)-cosmo.get_look_time(zz[i]))*gyr))
                 R.append(quad(integrand,z_initial,z_final)[0])
         R=np.array(R)
         if R[np.argwhere(zz>=self.z_pivot)[0][0]]==0:
