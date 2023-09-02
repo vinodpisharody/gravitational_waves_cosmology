@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize_scalar
 import warnings
 import random
-warnings.filterwarnings("ignore")
+from scipy.integrate import quad
+import scipy.stats as distribution
+warnings.filterwarnings("ignore",category=RuntimeWarning)
 from tqdm import tqdm
 import csv
 mpc=3.08568*10**22
@@ -13,6 +15,7 @@ c=299792458
 M=2*10**30
 G=6.67*10**-11
 density_detector = []
+
 # We consider noise characteristic strain (1/sqrt(Hz)) of various detectors in the given Frequency band
 # Note that we have mentioned the source (website or arxiv paper)
 # There are 3 parts : a)Noise strain b)Frequency bins c)omega_strain calculated using the formula
@@ -202,8 +205,7 @@ class bbh():
         plt.loglog(freq,np.sqrt(16/5)*C*freq,color=curve_color,label=r'$h_c(f,T={})$'.format(Tobs))
         plt.fill_between(freq,np.sqrt(16/5)*C*freq,np.sqrt(freq*(Sh)/R),where=(np.sqrt(16/5)*C*freq>np.sqrt(freq*
         (Sh)/R)),color=curve_color,alpha=0.4)
-        plt.legend()
-    def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
+def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
     c=[np.exp(-i) for i in np.arange(0,50,1)]
     res=0
     count=0
@@ -211,8 +213,35 @@ class bbh():
         temp=res
         ans=minimize_scalar(lambda x:abs(bbh(m1=m1,m2=m2,z=x,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)+c[i]*(x-res)**2)
         res=ans.x
-        if abs(bbh(m1=m1,m2=m2,z=res,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)<0.1:
-            return res
-    else:
-        raise ValueError("Invalid")
-
+        if abs(bbh(m1=m1,m2=m2,z=res,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)<0.01:
+            if res>40:
+                warnings.warn('z_min>40 and will be clipped at 40',category=UserWarning)
+                return 40
+            else:
+                return res
+    check=10
+    init=0.001
+    while check>8:
+        check=bbh(m1=m1,m2=m2,z=init,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()
+        init=init+0.001
+    return(init)
+def get_snr_background(gw_background=None,det=None,Tobs=4,H0=70):
+        """
+        Gives integrated SNR of the given background for the given detector and observation time(in years)
+        Parameters:
+            gw_background(callable function):A callable function representing the gravitational background
+            det(string):Detector can be LISA,LIGO(Aplus),CE1,CE2,ET
+            Tobs(float)=Observation time in years(default:4)
+            H0 (float) : Present day value of Hubble's Constant in km/(Mpc*year)
+        Returns:
+            float:Lookback time of the given redshift
+        """
+        if gw_background==None :
+            raise ValueError("Input background not specified")
+        if det==None:
+            raise ValueError("Input detector not specified")
+        freq=detector(det).get_asd()[0]
+        omega_sense=((2*np.pi**2)/3*((H0*1000/(mpc*year))**2))*(freq**3)*detector(det).get_asd()[1]**2
+        integrnd=(gw_background(freq)**2)/omega_sense**2
+        dx_values = np.diff(freq)
+        return(np.sqrt(Tobs*year*np.trapz(integrnd,freq,dx_values)))
