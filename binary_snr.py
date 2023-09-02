@@ -225,14 +225,14 @@ def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
         check=bbh(m1=m1,m2=m2,z=init,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()
         init=init+0.001
     return(init)
-def get_snr_background(gw_background=None,det=None,Tobs=4,H0=70):
+def get_background_snr(gw_background=None,det=None,Tobs=4,H0=70):
         """
         Gives integrated SNR of the given background for the given detector and observation time(in years)
         Parameters:
             gw_background(callable function):A callable function representing the gravitational background
             det(string):Detector can be LISA,LIGO(Aplus),CE1,CE2,ET
             Tobs(float)=Observation time in years(default:4)
-            H0 (float) : Present day value of Hubble's Constant in km/(Mpc*year)
+            H0 (float) : Present day value of Hubble's Constant in km/(Mpc)
         Returns:
             float:Lookback time of the given redshift
         """
@@ -241,7 +241,8 @@ def get_snr_background(gw_background=None,det=None,Tobs=4,H0=70):
         if det==None:
             raise ValueError("Input detector not specified")
         freq=detector(det).get_asd()[0]
-        omega_sense=((2*np.pi**2)/3*((H0*1000/(mpc*year))**2))*(freq**3)*detector(det).get_asd()[1]**2
+        H=H0*1000*(mpc)**-1
+        omega_sense=((2*np.pi**2)/(3*((H)**2)))*(freq**3)*(detector(det).get_asd()[1])**2
         integrnd=(gw_background(freq)**2)/omega_sense**2
         dx_values = np.diff(freq)
         return(np.sqrt(Tobs*year*np.trapz(integrnd,freq,dx_values)))
