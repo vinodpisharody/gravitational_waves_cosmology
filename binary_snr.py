@@ -44,7 +44,6 @@ sensitivity_lisa = np.empty(0)
 for i in range(len(data)):
     freq_lisa = np.append(freq_lisa, float(data[i][0]))
     sensitivity_lisa = np.append(sensitivity_lisa, float(data[i][1]))
-sensitivity_lisa = np.sqrt(sensitivity_lisa)
 # 4 CE_A (20 km Baseline)
 with open('cosmic_explorer_A_noise.csv', newline='') as csvfile:
     data = list(csv.reader(csvfile))
