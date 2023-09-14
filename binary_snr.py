@@ -299,10 +299,6 @@ def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
         ans=minimize_scalar(lambda x:abs(bbh(m1=m1,m2=m2,z=x,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)+c[i]*(x-res)**2)
         res=ans.x
         if abs(bbh(m1=m1,m2=m2,z=res,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)<0.01:
-            if res>120:
-                warnings.warn('z_min>120 and will be clipped at 120',category=UserWarning)
-                return 120
-            else:
                 return res
     init=0.001
     check=bbh(m1=m1,m2=m2,z=init,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()
