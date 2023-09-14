@@ -5,9 +5,9 @@ from scipy.optimize import minimize_scalar
 import warnings
 import random
 from scipy.integrate import quad
+from scipy import interpolate
 import scipy.stats as distribution
 warnings.filterwarnings("ignore",category=RuntimeWarning)
-from tqdm import tqdm
 import csv
 mpc=3.08568*10**22
 year=365*24*3600
@@ -74,6 +74,14 @@ for i in range(len(data)):
 # 7 Test 
 freq_test=np.arange(10**-4,0.1,10**-5)
 sensitivity_test=(10**-20)*np.ones(len(freq_test))
+
+###Overlap reduction function L1=LIGO Livingston H1=Ligo Hanford V1=Virgo
+f_hl=np.loadtxt('orf_h1_l1.txt',usecols=0)
+orf_hl=np.loadtxt('orf_h1_l1.txt',usecols=1)
+f_hv=np.loadtxt('orf_h1_v1.txt',usecols=0)
+orf_hv=np.loadtxt('orf_h1_v1.txt',usecols=1)
+f_lv=np.loadtxt('orf_l1_v1.txt',usecols=0)
+orf_lv=np.loadtxt('orf_l1_v1.txt',usecols=1)
 def phenomA(f,m1,m2,z,flag=None):
     fm = [2.9740*10**(-1), 4.4810*10**(-2), 9.5560*10**(-2)]
     fri = [5.9411*10**(-1), 8.9794*10**(-2), 19.111*10**(-2)]
@@ -120,6 +128,81 @@ class detector():
             return(freq_lisa,sensitivity_lisa)
         else:
             return(freq_test,sensitivity_test)
+def detector_network(conf=None,H0=70):
+    if conf not in [1,2,3,4,5,6,7]:
+        raise ValueError('conf has to be a integer between 1 and 7')
+    if conf==1: ###CE1+CE1###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE1').get_asd()[0],detector('CE1').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2)*orf)
+       Cov=(p1)*(p1)*fac**2
+       return([freq,Cov])
+    elif conf==2: ###CE2+CE2###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE2').get_asd()[0],detector('CE2').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2)*orf)
+       Cov=(p1)*(p1)*fac**2
+       return([freq,Cov])
+    elif conf==3: ###CE1+CE2###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE1').get_asd()[0],detector('CE1').get_asd()[1],kind='linear')(freq)**2
+       p2=interpolate.interp1d(detector('CE2').get_asd()[0],detector('CE2').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2)*orf)
+       Cov=(p1)*(p2)*fac**2
+       return([freq,Cov])
+    elif conf==4: ###CE1+CE1+ET###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE1').get_asd()[0],detector('CE1').get_asd()[1],kind='linear')(freq)**2
+       p2=interpolate.interp1d(detector('CE2').get_asd()[0],detector('CE2').get_asd()[1],kind='linear')(freq)**2
+       p3=interpolate.interp1d(detector('ET').get_asd()[0],detector('ET').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf12=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       orf13=interpolate.interp1d(x=f_hv, y=orf_hv,kind='cubic')(freq)
+       orf23=interpolate.interp1d(x=f_lv, y=orf_lv,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2))
+       cov_eff=p1*p1/orf12**2+p1*p3*((np.sin(np.pi/3))**2)/orf13**2+p1*p3*((np.sin(np.pi/3))**2)/orf23**2
+       Cov=cov_eff*fac**2
+       return([freq,Cov])
+    elif conf==5: ###CE2+CE2+ET###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE1').get_asd()[0],detector('CE1').get_asd()[1],kind='linear')(freq)**2
+       p2=interpolate.interp1d(detector('CE2').get_asd()[0],detector('CE2').get_asd()[1],kind='linear')(freq)**2
+       p3=interpolate.interp1d(detector('ET').get_asd()[0],detector('ET').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf12=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       orf13=interpolate.interp1d(x=f_hv, y=orf_hv,kind='cubic')(freq)
+       orf23=interpolate.interp1d(x=f_lv, y=orf_lv,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2))
+       cov_eff=p2*p2/orf12**2+p2*p3*((np.sin(np.pi/3))**2)/orf13**2+p2*p3*((np.sin(np.pi/3))**2)/orf23**2
+       Cov=cov_eff*fac**2
+       return([freq,Cov])
+    elif conf==6: ###CE1+CE2+ET###
+       freq=np.arange(5,100.25,0.25)
+       p1=interpolate.interp1d(detector('CE1').get_asd()[0],detector('CE1').get_asd()[1],kind='linear')(freq)**2
+       p2=interpolate.interp1d(detector('CE2').get_asd()[0],detector('CE2').get_asd()[1],kind='linear')(freq)**2
+       p3=interpolate.interp1d(detector('ET').get_asd()[0],detector('ET').get_asd()[1],kind='linear')(freq)**2
+       H=H0*1000/mpc
+       orf12=interpolate.interp1d(x=f_hl, y=orf_hl,kind='cubic')(freq)
+       orf13=interpolate.interp1d(x=f_hv, y=orf_hv,kind='cubic')(freq)
+       orf23=interpolate.interp1d(x=f_lv, y=orf_lv,kind='cubic')(freq)
+       fac=(10*(np.pi**2)*freq**3)/(3*(H**2))
+       cov_eff=p1*p2/orf12**2+p1*p3*((np.sin(np.pi/3))**2)/orf13**2+p2*p3*((np.sin(np.pi/3))**2)/orf23**2
+       Cov=cov_eff*fac**2
+       return([freq,Cov])
+    elif conf==7 :###LISA###
+       H=H0*1000/mpc
+       f=detector('LISA').get_asd()[0]
+       freq=np.round(np.arange(10**-4,0.1,0.00025),decimals=5)
+       sh=interpolate.interp1d(f,detector('LISA').get_asd()[1]**2)(freq)
+       fac=(2*(np.pi**2)*freq**3)/(3*(H**2))
+       Cov=(fac*sh)**2
+       return([freq,Cov])         
 b=[]
 class bbh():
     def __init__(self,m1=30,m2=30,z=1,H0=70,om_m=0.3,om_l=0.7,detector=None):
@@ -146,6 +229,8 @@ class bbh():
             M_total = self.m1+self.m2
             eta = self.m1*self.m2/(M_total**2)
             M_chirp=(eta**(3/5))*M_total
+            if M_total<=0:
+                return(0)
             M_x=(G*M_chirp*M)/c**3
             f_isco=(c**3)/(G*(6**(3/2))*M_total*M*np.pi)
             tau=(eta*Tobs*year*(c**3))/(G*5*M_total*M)
@@ -214,35 +299,41 @@ def optimal_snr(m1,m2,H0=70,om_m=0.3,om_l=0.7,detector=None,optimal=8):
         ans=minimize_scalar(lambda x:abs(bbh(m1=m1,m2=m2,z=x,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)+c[i]*(x-res)**2)
         res=ans.x
         if abs(bbh(m1=m1,m2=m2,z=res,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()-8)<0.01:
-            if res>40:
-                warnings.warn('z_min>40 and will be clipped at 40',category=UserWarning)
-                return 40
+            if res>120:
+                warnings.warn('z_min>120 and will be clipped at 120',category=UserWarning)
+                return 120
             else:
                 return res
-    check=10
     init=0.001
+    check=bbh(m1=m1,m2=m2,z=init,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()
     while check>8:
         check=bbh(m1=m1,m2=m2,z=init,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()
-        init=init+0.001
+        if bbh(m1=m1,m2=m2,z=init+5,H0=H0,om_m=om_m,om_l=om_l,detector=detector).get_snr()>8:
+            init=init+5
+        else:
+            init=init+0.001
     return(init)
-def get_background_snr(gw_background=None,det=None,Tobs=4,H0=70):
+def get_background_snr(gw_background=None,conf=None,H0=70,Tobs_space=3,Tobs_ground=1):
         """
         Gives integrated SNR of the given background for the given detector and observation time(in years)
         Parameters:
             gw_background(callable function):A callable function representing the gravitational background
-            det(string):Detector can be LISA,LIGO(Aplus),CE1,CE2,ET
-            Tobs(float)=Observation time in years(default:4)
+            conf(int):An integer between 1 and 12 
             H0 (float) : Present day value of Hubble's Constant in km/(Mpc)
+            Tobs_space(float) : Observation time for space based detector in years .Default is 3
+            Tobs_ground(float) : Observation time for ground based detector in years .Default is 1
         Returns:
-            float:Lookback time of the given redshift
+            float:SNR 
         """
         if gw_background==None :
             raise ValueError("Input background not specified")
-        if det==None:
-            raise ValueError("Input detector not specified")
-        freq=detector(det).get_asd()[0]
-        H=H0*1000*(mpc)**-1
-        omega_sense=((2*np.pi**2)/(3*((H)**2)))*(freq**3)*(detector(det).get_asd()[1])**2
-        integrnd=(gw_background(freq)**2)/omega_sense**2
-        dx_values = np.diff(freq)
-        return(np.sqrt(Tobs*year*np.trapz(integrnd,freq,dx_values)))
+        if conf not in [1,2,3,4,5,6,7]:
+             raise ValueError('conf has to be a integer between 1 and 7')
+        if conf in [1,2,3,4,5,6]:
+             f,cov=detector_network(conf=conf,H0=70)[0],detector_network(conf=conf,H0=70)[1]
+             snr=np.sqrt(2*Tobs_ground*year)*np.sqrt((f[1]-f[0])*np.sum((gw_background(f)**2)/cov))
+             return(snr)
+        if conf==7:
+            f,cov=detector_network(conf=conf,H0=70)[0],detector_network(conf=conf,H0=70)[1]
+            snr=np.sqrt(Tobs_space*year)*(0.00025)*np.sqrt(np.sum((gw_background(f)**2)/cov))
+            return(snr)
