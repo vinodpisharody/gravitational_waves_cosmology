@@ -150,21 +150,21 @@ def match_filtered_snr(m1,m2,z,detector=None,threshold=(8,0.01),quantity=None,so
         snr = np.sqrt(quad(integrand,min_f,max_f,epsabs=0,epsrel=0.1,limit=500)[0])
     elif detector=='LGWA1':
         if source_type=='averaged':
-            integrand =(16/5)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_nb
+            integrand =(16/5)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_nb**2
         else:
-            integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_nb
+            integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_nb**2
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
     elif detector=='LGWA2':
         if source_type=='averaged':
-            integrand =(16/5)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si
+            integrand =(16/5)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si**2
         else:
-            integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si
+            integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si**2
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
     elif detector=='LGWA3':
         if source_type=='averaged':
-            integrand =(16/5)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck
+            integrand =(16/5)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck**2
         else:
-            integrand =(8)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck
+            integrand =(8)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck**2
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
     elif detector=='CE1':
         if source_type=='averaged':
@@ -456,7 +456,6 @@ def get_background_snr(gw_background=None,band=None,detector=None,sampling_rate=
             freq=np.arange(min(band),max(band)+sampling_rate,sampling_rate) 
             snr=np.sqrt(2*Tobs*year*np.sum(np.array(gw_background(freq)**2/noise(freq)**2))*sampling_rate)         
         return(snr)
-
 
         
         

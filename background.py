@@ -46,18 +46,18 @@ sensitivity_et=np.loadtxt('ET.txt',delimiter=',',usecols=1)
 
 
 
-freq_lgwa = np.loadtxt('LGWA.txt',delimiter=',',usecols=0)
-sensitivity_lgwa_nb = np.loadtxt('LGWA.txt',delimiter=',',usecols=1)
-sensitivity_lgwa_nb = median_filter(sensitivity_lgwa_nb, size=window_size)**2
-lgwa1_psd=ipd(freq_lgwa,sensitivity_lgwa_nb,fill_value='extrapolate',kind='cubic')
+freq_lgwa = np.loadtxt('LGWA_Nb_psd.txt',usecols=0,delimiter=',')
+sensitivity_lgwa_nb = np.loadtxt('LGWA_Nb_psd.txt',usecols=1,delimiter=',')
+sensitivity_lgwa_nb_smooth = median_filter(sensitivity_lgwa_nb, size=window_size)
+lgwa1_psd=ipd(freq_lgwa,sensitivity_lgwa_nb_smooth,fill_value='extrapolate',kind='cubic')
 # 9 LGWA (Sb)
-sensitivity_lgwa_si = np.loadtxt('LGWA.txt',delimiter=',',usecols=2)
-sensitivity_lgwa_si = median_filter(sensitivity_lgwa_si, size=window_size)**2
-lgwa2_psd=ipd(freq_lgwa,sensitivity_lgwa_si,fill_value='extrapolate',kind='cubic')
+sensitivity_lgwa_si = np.loadtxt('LGWA_Si_psd.txt',usecols=1,delimiter=',')
+sensitivity_lgwa_si_smooth = median_filter(sensitivity_lgwa_si, size=window_size)
+lgwa2_psd=ipd(freq_lgwa,sensitivity_lgwa_si_smooth,fill_value='extrapolate',kind='cubic')
 # 10 LGWA (Soundcheck)
-sensitivity_lgwa_soundcheck = np.loadtxt('LGWA.txt',delimiter=',',usecols=3)
-sensitivity_lgwa_soundcheck = median_filter(sensitivity_lgwa_soundcheck, size=window_size)**2
-lgwa3_psd=ipd(freq_lgwa,sensitivity_lgwa_soundcheck,fill_value='extrapolate',kind='cubic')
+sensitivity_lgwa_soundcheck = np.loadtxt('LGWA_Soundcheck_psd.txt',usecols=1,delimiter=',')
+sensitivity_lgwa_soundcheck_smooth = median_filter(sensitivity_lgwa_soundcheck, size=window_size)
+lgwa3_psd=ipd(freq_lgwa,sensitivity_lgwa_soundcheck_smooth,fill_value='extrapolate',kind='cubic')
 
 
 freq_ligo= np.loadtxt('LIGO.txt',usecols=0,delimiter=',')
@@ -167,7 +167,7 @@ def detection_factor(m1,m2,z,f,detector=None,err=1,source_type='averaged'):
                     return(1)
                 else:
                     return 0
-def match_filtered_snr(m1,m2,z,detector=None,threshold=(8,0.1),quantity='snr',source_type='averaged',freq_band=None):
+def match_filtered_snr(m1,m2,z,detector=None,threshold=(8,1),quantity='snr',source_type='averaged',freq_band=None):
     """
     Parameters
     ----------
@@ -243,21 +243,31 @@ def match_filtered_snr(m1,m2,z,detector=None,threshold=(8,0.1),quantity='snr',so
         else:
             integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_nb
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
-        integrand=ipd(freq_lgwa,integrand,fill_value='extrapolate')
+        
+        if source_type=='averaged':
+            integrand=lambda f : 16/5 * waveform(f)**2/lgwa1_psd(f)
+        else:
+            integrand=lambda f : 8 * waveform(f)**2/lgwa1_psd(f)
     elif detector=='LGWA2':
         if source_type=='averaged':
             integrand =(16/5)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si
         else:
             integrand =(8)*np.array([waveform(f) for f in freq_lgwa])**2/sensitivity_lgwa_si
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
-        integrand=ipd(freq_lgwa,integrand,fill_value='extrapolate')
+        if source_type=='averaged':
+            integrand=lambda f : 16/5 * waveform(f)**2/lgwa2_psd(f)
+        else:
+            integrand=lambda f : 8 * waveform(f)**2/lgwa2_psd(f)
     elif detector=='LGWA3':
         if source_type=='averaged':
             integrand =(16/5)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck
         else:
             integrand =(8)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_lgwa_soundcheck
         snr=np.sqrt(2*simpson(integrand,freq_lgwa))
-        integrand=ipd(freq_lgwa,integrand,fill_value='extrapolate')
+        if source_type=='averaged':
+            integrand=lambda f : 16/5 * waveform(f)**2/lgwa3_psd(f)
+        else:
+            integrand=lambda f : 8 * waveform(f)**2/lgwa3_psd(f)
     elif detector=='CE1':
         if source_type=='averaged':
             integrand =(16/25)*np.array([waveform(f) for f in freq_ce])**2/sensitivity_ce1**2
@@ -576,7 +586,7 @@ class background():
             return result[0]/10**13
         return np.array(ray.get([omega.remote(i) for i in f]))
     
-    def get_background_simulated(self,Tobs=5,threshold=(8,1),source_type='averaged',batch_size=5000,nprocs=32,port_id=7705):
+    def get_background_simulated(self,Tobs=5,threshold=(8,1),source_type='averaged',batch_size=5000,nprocs=32,port_id=7705,Nburn=3000):
         """
         Parameters
         ----------
@@ -604,7 +614,7 @@ class background():
         norm_z = quad(lambda x: Rz(x).value, self.merger[1],self.merger[2],epsabs=0,epsrel=0.1,limit=200)[0]
         def p(z): return Rz(z).value/norm_z
         samples = sampler(merger_rate=(lambda z: p(z), self.merger[1],self.merger[2]), pdfm1=(lambda m,z:self.primary_mass[0](m,z)/normalize(lambda m :self.primary_mass[0](m,z),self.primary_mass[1],self.primary_mass[2]), self.primary_mass[1],self.primary_mass[2]),
-                          pdfm2=(lambda m,z:self.secondary_mass[0](m,z)/normalize(lambda m :self.secondary_mass[0](m,z),self.secondary_mass[1],self.secondary_mass[2]), self.secondary_mass[1],self.secondary_mass[2]), Nsamples=Number_of_events, Nburn=2500)
+                          pdfm2=(lambda m,z:self.secondary_mass[0](m,z)/normalize(lambda m :self.secondary_mass[0](m,z),self.secondary_mass[1],self.secondary_mass[2]), self.secondary_mass[1],self.secondary_mass[2]), Nsamples=Number_of_events, Nburn=Nburn)
         @ray.remote(max_retries=-1)
         def flux(samples,Tobs,freq,detector=None,threshold=(8,1),source_type=source_type):
             if detector not in ['LISA','LGWA1','LGWA2','LGWA3','CE1+CE1+ET','CE2+CE2+ET','CE1+CE1','CE2+CE2','Null','LIGO','LVK','CE1','CE2','ET']:
@@ -618,7 +628,7 @@ class background():
             else:
                 ans=(1+z)**2/(12*np.pi*c*dl**2 *rho * c**2) * (G*np.pi)**(2/3) * f  * (m1*m2/(m1+m2)**(1/3))*M**(5/3)*match_filtered_snr(m1=m1, m2=m2, z=z, freq_band=f,threshold=threshold,detector=detector,quantity='detection',source_type=source_type)  *waveform_factor(f=f, z=z, m1=m1, m2=m2)        
             return ans/(Tobs*year)
-        def background(samples,freq=None,detector=None,Tobs=Tobs,threshold=threshold,batch_size=batch_size,port_id=port_id):
+        def background(samples,freq=None,detector=None,Tobs=Tobs,threshold=threshold,batch_size=batch_size,port_id=port_id,source_type=source_type):
             if detector not in ['LISA','LGWA1','LGWA2','LGWA3','CE1+CE1+ET','CE2+CE2+ET','CE1+CE1','CE2+CE2','Null','LIGO','LVK','CE1','CE2','ET']:
                 raise ValueError('Invalid Detector')
             num_batches = (len(samples) + batch_size - 1) // batch_size
@@ -632,3 +642,4 @@ class background():
             return(ipd(freq,final_result,fill_value='extrapolate'))
         a1=background(samples,freq=self.frequency_band,detector=self.detector,Tobs=Tobs,threshold=threshold,batch_size=batch_size)
         return([samples,np.array(a1(self.frequency_band))])
+
